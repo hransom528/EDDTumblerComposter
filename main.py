@@ -13,7 +13,7 @@ from w1thermsensor import W1ThermSensor, Unit #DS18B20 lib
 
 # Initializes sensors
 # TODO: Fix DHT initialization
-dhtDevice = Adafruit_DHT.DHT22(board.D18)
+#dhtDevice = Adafruit_DHT.DHT22(board.D18)
 i2c = busio.I2C(board.SCL, board.SDA, frequency=100000)
 sgp30 = adafruit_sgp30.Adafruit_SGP30(i2c)
 print("SGP30 serial #", [hex(i) for i in sgp30.serial])
@@ -34,13 +34,14 @@ def main():
         # Get temperature from DS18B20
         tempC = tempsensor.get_temperature()
         tempF = tempsensor.get_temperature(Unit.DEGREES_F)
-        
+        print("TempC = %d \t TempF = %d" % (tempC, tempF))
         
         # Gets eC02 and TVOC from SGP30
-        eC02 = sgp30.eC02
+        eC02 = sgp30.eCO2
         TVOC = sgp30.TVOC
         print("eCO2 = %d ppm \t TVOC = %d ppb" % (eCO2, TVOC))
   
+      
 
 # Runs main function
 if __name__ == "__main__":
