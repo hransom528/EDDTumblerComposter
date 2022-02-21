@@ -10,23 +10,24 @@
 #include <Wire.h>
 
 /** LCD Initialization **/
-const int LCD_RS = 12;
-const int LCD_RW = 11;
-const int LCD_EN = 10;
-const int LCD_D4 = 5;
-const int LCD_D5 = 4;
-const int LCD_D6 = 3;
-const int LCD_D7 = 2;
+const short LCD_RS = 24;
+const short LCD_RW = 26;
+const short LCD_EN = 28;
+const short LCD_D4 = 30;
+const short LCD_D5 = 32;
+const short LCD_D6 = 34;
+const short LCD_D7 = 36;
 LiquidCrystal lcd(LCD_RS, LCD_RW, LCD_EN, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
 
 /** Sensor Initialization **/
-#define ONE_WIRE_BUS 8
+#define ONE_WIRE_BUS 22
 OneWire oneWire(ONE_WIRE_BUS);  
 DallasTemperature tempSensor(&oneWire);
 Adafruit_AHTX0 dht20;
 Adafruit_SGP30 sgp;
+int counter = 0;
 
-//const int MOTOR = ;
+const short MOTOR = 23;
 
 // Setup
 void setup() {
@@ -39,7 +40,7 @@ void setup() {
 
   // Connect to SGP30
   if (! sgp.begin()){
-    Serial.println("Sensor not found :(");
+    Serial.println("SGP30 not found");
     while (1);
   }
   Serial.print("Found SGP30 serial #");
@@ -55,38 +56,65 @@ void setup() {
 
   // Connect to DS18B20 temperature sensor
   tempSensor.begin();
-  
 }
 
 
 // Loop
 void loop() {
   // DHT20 and DS18B20 sensor readings
-  sensors_event_t dhtHumidity, dhtTemp;     // Container for DHT20 humidity and temperature readings
-  dht20.getEvent(&dhtHumidity, &dhtTemp);   // Read DHT20 temperature and humidity
-  tempSensor.requestTemperatures();         // Send request to DS18B20 OneWire bus
-  double tempC = tempSensor.getTempCByIndex(0); // Read DS18B20 temperature
-
-  // SGP30 reading
-  if (! sgp.IAQmeasure()) {
-    Serial.println("Measurement failed");
-    return;
-  }
+  sensors_event_t dhtHumidityEvent, dhtTempEvent;     // Container for DHT20 humidity and temperature readings
+  dht20.getEvent(&dhtHumidityEvent, &dhtTempEvent);   // Read DHT20 temperature and humidity
+  double dhtTemp = dhtTempEvent.temperature;
+  double dhtHumidity = dhtHumidityEvent.relative_humidity;
+  tempSensor.requestTemperatures();                   // Send request to DS18B20 OneWire bus
+  double tempC = tempSensor.getTempCByIndex(0);       // Read DS18B20 temperature
   
 
-  // Convert sensor readings to strings
+  // Sets SGP30 absolute humidity to enable humidity compensation for air quality readings
+  sgp.setHumidity(getAbsoluteHumidity(tempC, dhtHumidity));
+
+  // SGP30 reading
+  Serial.println("SGP30 Data: ");
+  if (!sgp.IAQmeasure()) {
+    Serial.println("SGP30 measurement failed");
+    return;
+  }
+  Serial.print("\tTVOC "); Serial.print(sgp.TVOC); Serial.print(" ppb\t");
+  Serial.print("\teCO2 "); Serial.print(sgp.eCO2); Serial.println(" ppm");
+  if (! sgp.IAQmeasureRaw()) {
+    Serial.println("SGP30 raw Measurement failed");
+    return;
+  }
+  Serial.print("\tRaw H2 "); Serial.print(sgp.rawH2); Serial.print(" \t");
+  Serial.print("\tRaw Ethanol "); Serial.print(sgp.rawEthanol); Serial.println("");
   
   // Output sensor readings
   Serial.println("DHT20 Data: ");
-  //Serial.print("\tTemperature: %d", dhtTemp);
-  //Serial.print("\tHumidity: %d", dhtHumidity);
+  Serial.print("\tTemperature: ");
+  Serial.print(dhtTemp);
+  Serial.print("\tHumidity: ");
+  Serial.println(dhtHumidity);
   Serial.println("DS18B20 Data: ");
-  //Serial.print("\tTemperature: %f", tempC);
-  Serial.println("SGP30 Data: ");
-  //Serial.print("\teCO2: %d", );
+  Serial.print("\tTemperature: ");
+  Serial.println(tempC);
   
 
-  delay(500);
+  // Loop delay == 1s
+  delay(1000);
+
+  // SGP30 periodic calibration
+  counter++;
+  if (counter == 30) {
+    counter = 0;
+
+    uint16_t TVOC_base, eCO2_base;
+    if (! sgp.getIAQBaseline(&eCO2_base, &TVOC_base)) {
+      Serial.println("Failed to get baseline readings");
+      return;
+    }
+    Serial.print("****Baseline values: eCO2: 0x"); Serial.print(eCO2_base, HEX);
+    Serial.print(" & TVOC: 0x"); Serial.println(TVOC_base, HEX);
+  }
 }
 
 
