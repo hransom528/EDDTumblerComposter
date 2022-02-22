@@ -5,7 +5,7 @@
 #include <Adafruit_AHTX0.h>
 #include <Adafruit_SGP30.h>
 #include <DallasTemperature.h>
-#include <LiquidCrystal.h>
+#include <LiquidCrystal_I2C.h>
 #include <OneWire.h>
 #include <Wire.h>
 
@@ -17,7 +17,7 @@ const short LCD_D4 = 30;
 const short LCD_D5 = 32;
 const short LCD_D6 = 34;
 const short LCD_D7 = 36;
-LiquidCrystal lcd(LCD_RS, LCD_RW, LCD_EN, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
+//LiquidCrystal lcd(LCD_RS, LCD_RW, LCD_EN, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
 
 /** Sensor Initialization **/
 #define ONE_WIRE_BUS 2
@@ -39,7 +39,7 @@ void setup() {
   tempSensor.begin();
   
   // LCD
-  lcd.begin(16, 2);
+  //lcd.begin(16, 2);
 
   // Connect to SGP30
   if (! sgp.begin()){
@@ -90,18 +90,20 @@ void loop() {
   
   // Output sensor readings
   Serial.println("DHT20 Data: ");
-  Serial.print("\tTemperature: ");
+  Serial.print("\tTemperature C: ");
   Serial.print(dhtTemp);
   Serial.print("\tHumidity: ");
   Serial.println(dhtHumidity);
   Serial.println("DS18B20 Data: ");
-  Serial.print("\tTemperature: ");
+  Serial.print("\tTemperature C: ");
   Serial.println(tempSensor.getTempCByIndex(0));
+  Serial.print("\tTemperature F: ");
+  Serial.println(tempSensor.getTempFByIndex(0));
   Serial.println('\n');
   
 
-  // Loop delay == 1s
-  delay(1000);
+  // Loop delay == 5s
+  delay(5000);
 
   // SGP30 periodic calibration
   counter++;
