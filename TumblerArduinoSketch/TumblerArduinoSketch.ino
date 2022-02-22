@@ -20,7 +20,7 @@ const short LCD_D7 = 36;
 LiquidCrystal lcd(LCD_RS, LCD_RW, LCD_EN, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
 
 /** Sensor Initialization **/
-#define ONE_WIRE_BUS 22
+#define ONE_WIRE_BUS 2
 OneWire oneWire(ONE_WIRE_BUS);  
 DallasTemperature tempSensor(&oneWire);
 Adafruit_AHTX0 dht20;
@@ -34,7 +34,10 @@ void setup() {
   // Serial console
   Serial.begin(9600);
   while (!Serial) { delay(10); };
-
+  
+  // Connect to DS18B20 temperature sensor
+  tempSensor.begin();
+  
   // LCD
   lcd.begin(16, 2);
 
@@ -54,8 +57,7 @@ void setup() {
     while (1) delay(10);
   }
 
-  // Connect to DS18B20 temperature sensor
-  tempSensor.begin();
+  
 }
 
 
@@ -67,11 +69,9 @@ void loop() {
   double dhtTemp = dhtTempEvent.temperature;
   double dhtHumidity = dhtHumidityEvent.relative_humidity;
   tempSensor.requestTemperatures();                   // Send request to DS18B20 OneWire bus
-  double tempC = tempSensor.getTempCByIndex(0);       // Read DS18B20 temperature
-  
 
   // Sets SGP30 absolute humidity to enable humidity compensation for air quality readings
-  sgp.setHumidity(getAbsoluteHumidity(tempC, dhtHumidity));
+  sgp.setHumidity(getAbsoluteHumidity(dhtTemp, dhtHumidity));
 
   // SGP30 reading
   Serial.println("SGP30 Data: ");
@@ -85,8 +85,8 @@ void loop() {
     Serial.println("SGP30 raw Measurement failed");
     return;
   }
-  Serial.print("\tRaw H2 "); Serial.print(sgp.rawH2); Serial.print(" \t");
-  Serial.print("\tRaw Ethanol "); Serial.print(sgp.rawEthanol); Serial.println("");
+  Serial.print("\tRaw H2: "); Serial.print(sgp.rawH2); Serial.print(" \t");
+  Serial.print("\tRaw Ethanol: "); Serial.print(sgp.rawEthanol); Serial.println("");
   
   // Output sensor readings
   Serial.println("DHT20 Data: ");
@@ -96,7 +96,8 @@ void loop() {
   Serial.println(dhtHumidity);
   Serial.println("DS18B20 Data: ");
   Serial.print("\tTemperature: ");
-  Serial.println(tempC);
+  Serial.println(tempSensor.getTempCByIndex(0));
+  Serial.println('\n');
   
 
   // Loop delay == 1s
