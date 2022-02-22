@@ -10,14 +10,7 @@
 #include <Wire.h>
 
 /** LCD Initialization **/
-const short LCD_RS = 24;
-const short LCD_RW = 26;
-const short LCD_EN = 28;
-const short LCD_D4 = 30;
-const short LCD_D5 = 32;
-const short LCD_D6 = 34;
-const short LCD_D7 = 36;
-//LiquidCrystal lcd(LCD_RS, LCD_RW, LCD_EN, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
+LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 /** Sensor Initialization **/
 #define ONE_WIRE_BUS 2
@@ -39,7 +32,9 @@ void setup() {
   tempSensor.begin();
   
   // LCD
-  //lcd.begin(16, 2);
+  lcd.init();
+  lcd.clear();
+  lcd.backlight();
 
   // Connect to SGP30
   if (! sgp.begin()){
@@ -88,7 +83,7 @@ void loop() {
   Serial.print("\tRaw H2: "); Serial.print(sgp.rawH2); Serial.print(" \t");
   Serial.print("\tRaw Ethanol: "); Serial.print(sgp.rawEthanol); Serial.println("");
   
-  // Output sensor readings
+  // Output sensor readings to serial monitor
   Serial.println("DHT20 Data: ");
   Serial.print("\tTemperature C: ");
   Serial.print(dhtTemp);
@@ -100,6 +95,15 @@ void loop() {
   Serial.print("\tTemperature F: ");
   Serial.println(tempSensor.getTempFByIndex(0));
   Serial.println('\n');
+
+  // Output readings to LCD
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("TempC: ");
+  lcd.print(tempSensor.getTempCByIndex(0));
+  lcd.setCursor(0, 1);
+  lcd.print("Humidity: ");
+  lcd.print(dhtHumidity);
   
 
   // Loop delay == 5s
