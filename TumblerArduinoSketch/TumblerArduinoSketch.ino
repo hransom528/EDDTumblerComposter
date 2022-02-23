@@ -8,6 +8,7 @@
 #include <LiquidCrystal_I2C.h>
 #include <OneWire.h>
 #include <Wire.h>
+#include <SoftwareSerial.h>
 
 /** LCD Initialization **/
 LiquidCrystal_I2C lcd(0x27, 16, 2);
@@ -22,11 +23,21 @@ int counter = 0;
 
 const short MOTOR = 23;
 
+/** Bluetooth Module **/
+const byte RX1 = 19;
+const byte TX1 = 18;
+const int HC31_CLOCK = 9600; 
+SoftwareSerial hc31(RX1, TX1);
+
+
 // Setup
 void setup() {
   // Serial console
   Serial.begin(9600);
   while (!Serial) { delay(10); };
+
+  // Connect to bluetooth console
+  hc31.begin(HC31_CLOCK);
   
   // Connect to DS18B20 temperature sensor
   tempSensor.begin();
@@ -104,8 +115,22 @@ void loop() {
   lcd.setCursor(0, 1);
   lcd.print("Humidity: ");
   lcd.print(dhtHumidity);
-  
-
+  delay(5000);
+lcd.clear();
+  lcd.setCursor(0, 0);
+lcd.print("TVOC(ppB): ");
+lcd.print(sgp.TVOC);
+lcd.setCursor(0, 1);
+lcd.print("eCO2(ppM): ");
+lcd.print(sgp.eCO2);
+delay(5000);
+  lcd.clear();
+  lcd.setCursor(0, 0);
+lcd.print("Raw H2: ");
+lcd.print(sgp.rawH2);
+lcd.setCursor(0, 1);
+lcd.print("Raw Ethanol: ");
+lcd.print(sgp.rawEthanol);
   // Loop delay == 5s
   delay(5000);
 
