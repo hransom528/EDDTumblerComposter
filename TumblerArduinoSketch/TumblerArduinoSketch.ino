@@ -27,7 +27,7 @@ const short MOTOR = 23;
 const byte RX1 = 19;
 const byte TX1 = 18;
 const int HC31_CLOCK = 38400; // Baud rate for AT commands is 38400, otherwise, use 9600 
-SoftwareSerial hc31(RX1, TX1);
+SoftwareSerial hc31(RX1, TX1); // RX, TX
 
 
 // Setup
@@ -37,6 +37,7 @@ void setup() {
   while (!Serial) { delay(10); };
 
   // Connect to bluetooth console
+  Serial.println("Connecting to HC31 bluetooth module...");
   hc31.begin(HC31_CLOCK);
   sendCommand("AT");
   Serial.print("Version: "); 
@@ -157,7 +158,8 @@ void loop() {
 
 // Sends AT serial command to bluetooth module
 void sendCommand(String command) {
-  hc31.println(command);
+  hc31.print(command);
+  hc31.print("\r\n");
   while (!hc31.available())
     delay(5);
   String message = hc31.readString();
