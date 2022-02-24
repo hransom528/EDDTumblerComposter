@@ -26,7 +26,7 @@ const short MOTOR = 23;
 /** Bluetooth Module **/
 const byte RX1 = 19;
 const byte TX1 = 18;
-const int HC31_CLOCK = 9600; 
+const int HC31_CLOCK = 38400; // Baud rate for AT commands is 38400, otherwise, use 9600 
 SoftwareSerial hc31(RX1, TX1);
 
 
@@ -38,6 +38,15 @@ void setup() {
 
   // Connect to bluetooth console
   hc31.begin(HC31_CLOCK);
+  sendCommand("AT");
+  Serial.print("Version: "); 
+  sendCommand("AT+VERSION?");
+  Serial.print("Name: ");
+  sendCommand("AT+NAME?");
+  Serial.print("Module address: ");
+  sendCommand("AT+ADDR?");
+  Serial.print("Password: ");
+  sendCommand("AT+PSWD?");
   
   // Connect to DS18B20 temperature sensor
   tempSensor.begin();
@@ -61,11 +70,8 @@ void setup() {
   if (!dht20.begin()) {
     Serial.println("DHT20 not found");
     while (1) delay(10);
-  }
-
-  
+  } 
 }
-
 
 // Loop
 void loop() {
@@ -116,21 +122,21 @@ void loop() {
   lcd.print("Humidity: ");
   lcd.print(dhtHumidity);
   delay(5000);
-lcd.clear();
-  lcd.setCursor(0, 0);
-lcd.print("TVOC(ppB): ");
-lcd.print(sgp.TVOC);
-lcd.setCursor(0, 1);
-lcd.print("eCO2(ppM): ");
-lcd.print(sgp.eCO2);
-delay(5000);
   lcd.clear();
   lcd.setCursor(0, 0);
-lcd.print("Raw H2: ");
-lcd.print(sgp.rawH2);
-lcd.setCursor(0, 1);
-lcd.print("Raw Ethanol: ");
-lcd.print(sgp.rawEthanol);
+  lcd.print("TVOC(ppB): ");
+  lcd.print(sgp.TVOC);
+  lcd.setCursor(0, 1);
+  lcd.print("eCO2(ppM): ");
+  lcd.print(sgp.eCO2);
+  delay(5000);
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Raw H2: ");
+  lcd.print(sgp.rawH2);
+  lcd.setCursor(0, 1);
+  lcd.print("Raw Ethanol: ");
+  lcd.print(sgp.rawEthanol);
   // Loop delay == 5s
   delay(5000);
 
@@ -147,6 +153,15 @@ lcd.print(sgp.rawEthanol);
     Serial.print("****Baseline values: eCO2: 0x"); Serial.print(eCO2_base, HEX);
     Serial.print(" & TVOC: 0x"); Serial.println(TVOC_base, HEX);
   }
+}
+
+// Sends AT serial command to bluetooth module
+void sendCommand(String command) {
+  hc31.println(command);
+  while (!hc31.available())
+    delay(5);
+  String message = hc31.readString();
+  Serial.println(message);
 }
 
 
