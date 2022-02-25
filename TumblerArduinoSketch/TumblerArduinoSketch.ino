@@ -7,8 +7,8 @@
 #include <DallasTemperature.h>
 #include <LiquidCrystal_I2C.h>
 #include <OneWire.h>
-#include <Wire.h>
 #include <SoftwareSerial.h>
+#include <Wire.h>
 
 /** LCD Initialization **/
 short LCD_ADDR = 0x27;
@@ -22,7 +22,7 @@ Adafruit_AHTX0 dht20;
 Adafruit_SGP30 sgp;
 int counter = 0;
 
-/ ** Output devices **/
+/** Output devices **/
 const byte MOTOR = 23;
 const byte SPEAKER = 9;
 
@@ -33,8 +33,8 @@ const int HC31_CLOCK = 38400; // Baud rate for AT commands is 38400, otherwise, 
 SoftwareSerial hc31(RX1, TX1); // RX, TX
 
 /** WiFi Module **/
-const byte RX2 = ;
-const byte TX2 = ;
+const byte RX2 = 17;
+const byte TX2 = 16;
 const int ESP01_CLOCK = 9600;
 SoftwareSerial esp01(RX2, TX2); // RX, TX
 
@@ -75,7 +75,7 @@ void setup() {
   lcd.clear();
   lcd.backlight();
 
-  // Connect to SGP30
+  // Connect to SGP30 air quality sensor
   if (! sgp.begin()){
     Serial.println("SGP30 not found");
     while (1);
@@ -85,7 +85,7 @@ void setup() {
   Serial.print(sgp.serialnumber[1], HEX);
   Serial.println(sgp.serialnumber[2], HEX);
 
-  // Connect to DHT20
+  // Connect to DHT20 humidity sensor
   if (!dht20.begin()) {
     Serial.println("DHT20 not found");
     while (1) delay(10);
@@ -104,7 +104,7 @@ void loop() {
   // Sets SGP30 absolute humidity to enable humidity compensation for air quality readings
   sgp.setHumidity(getAbsoluteHumidity(dhtTemp, dhtHumidity));
 
-  // SGP30 reading
+  // SGP30 reading and output
   Serial.println("SGP30 Data: ");
   if (!sgp.IAQmeasure()) {
     Serial.println("SGP30 measurement failed");
@@ -119,7 +119,7 @@ void loop() {
   Serial.print("\tRaw H2: "); Serial.print(sgp.rawH2); Serial.print(" \t");
   Serial.print("\tRaw Ethanol: "); Serial.print(sgp.rawEthanol); Serial.println("");
   
-  // Output sensor readings to serial monitor
+  // Output DHT20 and DS18B20 sensor readings to serial monitor
   Serial.println("DHT20 Data: ");
   Serial.print("\tTemperature C: ");
   Serial.print(dhtTemp);
@@ -132,7 +132,7 @@ void loop() {
   Serial.println(tempSensor.getTempFByIndex(0));
   Serial.println('\n');
 
-  // Output readings to LCD
+  // Output readings to LCD with a 5s cycle
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("TempC: ");
@@ -176,17 +176,18 @@ void loop() {
 
 // Sends AT serial command to Bluetooth and WiFi modules
 void sendCommand(byte module, String command) {
+  String message = "";
   if (module) {
     esp01.print(command);
     esp01.println("\r");
     while (!esp01.available()) { delay(5); }
-    String message = esp01.readString();
+    message =  esp01.readString();
   }
   else {
     hc31.print(command);
     hc31.println("\r");
     while (!hc31.available()) { delay(5); }
-    String message = hc31.readString();
+    message = hc31.readString();
   }
   Serial.println(message);
 }
