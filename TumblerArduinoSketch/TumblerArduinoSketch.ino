@@ -11,7 +11,8 @@
 #include <SoftwareSerial.h>
 
 /** LCD Initialization **/
-LiquidCrystal_I2C lcd(0x27, 16, 2);
+short LCD_ADDR = 0x27;
+LiquidCrystal_I2C lcd(LCD_ADDR, 16, 2);
 
 /** Sensor Initialization **/
 #define ONE_WIRE_BUS 2
@@ -21,13 +22,21 @@ Adafruit_AHTX0 dht20;
 Adafruit_SGP30 sgp;
 int counter = 0;
 
-const short MOTOR = 23;
+/ ** Output devices **/
+const byte MOTOR = 23;
+const byte SPEAKER = 9;
 
 /** Bluetooth Module **/
 const byte RX1 = 19;
 const byte TX1 = 18;
 const int HC31_CLOCK = 38400; // Baud rate for AT commands is 38400, otherwise, use 9600 
 SoftwareSerial hc31(RX1, TX1); // RX, TX
+
+/** WiFi Module **/
+const byte RX2 = ;
+const byte TX2 = ;
+const int ESP01_CLOCK = 9600;
+SoftwareSerial esp01(RX2, TX2); // RX, TX
 
 
 // Setup
@@ -36,23 +45,32 @@ void setup() {
   Serial.begin(9600);
   while (!Serial) { delay(10); };
 
-  // Connect to bluetooth console
+  // Connect to HC-05 Bluetooth module
   Serial.println("Connecting to HC31 bluetooth module...");
   hc31.begin(HC31_CLOCK);
-  sendCommand("AT");
+  sendCommand(0, "AT");
   Serial.print("Version: "); 
-  sendCommand("AT+VERSION?");
+  sendCommand(0, "AT+VERSION?");
   Serial.print("Name: ");
-  sendCommand("AT+NAME?");
+  sendCommand(0, "AT+NAME?");
   Serial.print("Module address: ");
-  sendCommand("AT+ADDR?");
+  sendCommand(0, "AT+ADDR?");
   Serial.print("Password: ");
-  sendCommand("AT+PSWD?");
+  sendCommand(0, "AT+PSWD?");
+  // TODO: Troubleshoot Bluetooth module connection
+
+  // Connect to ESP01 WiFi module
+  Serial.println("Connecting to ESP01 WiFi module...");
+  esp01.begin(ESP01_CLOCK);
+  sendCommand(1, "AT");
+  Serial.print("Version: "); 
+  sendCommand(1, "AT+GMR");
+  // TODO: Update WiFi module code
   
   // Connect to DS18B20 temperature sensor
   tempSensor.begin();
   
-  // LCD
+  // Initialize LCD
   lcd.init();
   lcd.clear();
   lcd.backlight();
@@ -156,13 +174,20 @@ void loop() {
   }
 }
 
-// Sends AT serial command to bluetooth module
-void sendCommand(String command) {
-  hc31.print(command);
-  hc31.print("\r\n");
-  while (!hc31.available())
-    delay(5);
-  String message = hc31.readString();
+// Sends AT serial command to Bluetooth and WiFi modules
+void sendCommand(byte module, String command) {
+  if (module) {
+    esp01.print(command);
+    esp01.println("\r");
+    while (!esp01.available()) { delay(5); }
+    String message = esp01.readString();
+  }
+  else {
+    hc31.print(command);
+    hc31.println("\r");
+    while (!hc31.available()) { delay(5); }
+    String message = hc31.readString();
+  }
   Serial.println(message);
 }
 
