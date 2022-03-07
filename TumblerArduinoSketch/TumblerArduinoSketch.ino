@@ -27,9 +27,9 @@ const byte MOTOR = 23;
 const byte SPEAKER = 9;
 
 /** Bluetooth Module **/
-const byte RX1 = 19;
-const byte TX1 = 18;
-const int HC31_CLOCK = 38400; // Baud rate for AT commands is 38400, otherwise, use 9600 
+const byte RX1 = 10;
+const byte TX1 = 11;
+const int HC31_CLOCK = 9600;
 SoftwareSerial hc31(RX1, TX1); // RX, TX
 
 /** WiFi Module **/
@@ -48,24 +48,25 @@ void setup() {
   // Connect to HC-05 Bluetooth module
   Serial.println("Connecting to HC31 bluetooth module...");
   hc31.begin(HC31_CLOCK);
+  delay(10);
   sendCommand(0, "AT");
   Serial.print("Version: "); 
-  sendCommand(0, "AT+VERSION?");
+  sendCommand(0, "AT+VERSION");
   Serial.print("Name: ");
-  sendCommand(0, "AT+NAME?");
-  Serial.print("Module address: ");
-  sendCommand(0, "AT+ADDR?");
-  Serial.print("Password: ");
-  sendCommand(0, "AT+PSWD?");
+  sendCommand(0, "AT+NAME=HC05-Slave");
+  //Serial.print("Module address: ");
+  //sendCommand(0, "AT+ADDR?");
+  Serial.print("PIN: ");
+  sendCommand(0, "AT+PIN1234");
   // TODO: Troubleshoot Bluetooth module connection
 
   // Connect to ESP01 WiFi module
-  Serial.println("Connecting to ESP01 WiFi module...");
+  /*Serial.println("Connecting to ESP01 WiFi module...");
   esp01.begin(ESP01_CLOCK);
   sendCommand(1, "AT");
   Serial.print("Version: "); 
   sendCommand(1, "AT+GMR");
-  // TODO: Update WiFi module code
+  // TODO: Update WiFi module code*/
   
   // Connect to DS18B20 temperature sensor
   tempSensor.begin();
@@ -175,7 +176,7 @@ void loop() {
 }
 
 // Sends AT serial command to Bluetooth and WiFi modules
-void sendCommand(byte module, String command) {
+String sendCommand(byte module, String command) {
   String message = "";
   if (module) {
     esp01.print(command);
@@ -185,11 +186,11 @@ void sendCommand(byte module, String command) {
   }
   else {
     hc31.print(command);
-    hc31.println("\r");
     while (!hc31.available()) { delay(5); }
-    message = hc31.readString();
+    message = hc31.read();
   }
   Serial.println(message);
+  return message;
 }
 
 
