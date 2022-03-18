@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">EDDTumblerComposter</string>
     <string name="title">EDD Tumbler Composter</string>
+    <string name="btnConnectText">Connect to Composter</string>
 </resources>
