@@ -2,4 +2,8 @@
     <string name="app_name">EDDTumblerComposter</string>
     <string name="title">EDD Tumbler Composter</string>
     <string name="btnConnectText">Connect to Composter</string>
+    <string name="swtWifiOnText">WiFi On</string>
+    <string name="swtBTOnText">Bluetooth On</string>
+    <string name="btnRequestBTPermsText">Request Bluetooth Permissions</string>
+    <string name="btnRequestWifiPermsText">Request WiFi Permissions</string>
 </resources>
