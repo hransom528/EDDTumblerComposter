@@ -37,13 +37,15 @@ const byte RX2 = 17;
 const byte TX2 = 16;
 const int ESP01_CLOCK = 9600;
 SoftwareSerial esp01(RX2, TX2); // RX, TX
-
+bool wifiAvailable = false;
+const String SERVER_TIMEOUT = "900";
 
 // Setup
 void setup() {
   // Serial console
   Serial.begin(9600);
   while (!Serial) { delay(10); };
+  Serial.print("Connected to serial monitor");
 
   /*
   // Connect to HC-05 Bluetooth module
@@ -60,20 +62,20 @@ void setup() {
   sendCommand(0, "AT+PSWD?");
   // TODO: Troubleshoot Bluetooth module connection*/
 
+  
   // Connect to ESP01 WiFi module
   Serial.println("Connecting to ESP01 WiFi module...");
   esp01.begin(ESP01_CLOCK);
   sendCommand(1, "AT");
-  Serial.print("Version: "); 
   sendCommand(1, "AT+GMR");
-  sendCommand("AT+CWMODE=2");                 // Configure ESP8266 as an access point
-  sendCommand("AT+CIFSR");                    // Get the ip address
-  sendCommand("AT+CIPMUX=1");                 // Configure for multiple connections
-  sendCommand("AT+CIPSERVER=1,80");           // Turn on server on port 80
-  sendCommand("AT+CIPSTO=" + SERVER_TIMEOUT); // Set server timeout
-  sendCommand("AT+CWSAP?");                   // Gets final configuration of ESP8266
+  sendCommand(1, "AT+CWMODE=3");                 // Configure ESP8266 as an access point
+  sendCommand(1, "AT+CIFSR");                    // Get the ip address
+  sendCommand(1, "AT+CIPMUX=1");                 // Configure for multiple connections
+  sendCommand(1, "AT+CIPSERVER=1,80");           // Turn on server on port 80
+  sendCommand(1, "AT+CIPSTO=" + SERVER_TIMEOUT); // Set server timeout
+  sendCommand(1, "AT+CWSAP?");                   // Gets final configuration of ESP8266
   Serial.println("WiFi Module Configured Successfully"); 
-  // TODO: Update WiFi module code
+  // TODO: Test WiFi module code
   
   // Connect to DS18B20 temperature sensor
   tempSensor.begin();
@@ -102,6 +104,12 @@ void setup() {
 
 // Loop
 void loop() {
+  // Checks if ESP8266 received data
+  wifiAvailable = wifiInput();
+  if (wifiAvailable) {
+    Serial.println(esp01.readString());
+  }
+  
   // DHT20 and DS18B20 sensor readings
   sensors_event_t dhtHumidityEvent, dhtTempEvent;     // Container for DHT20 humidity and temperature readings
   dht20.getEvent(&dhtHumidityEvent, &dhtTempEvent);   // Read DHT20 temperature and humidity
@@ -179,6 +187,17 @@ void loop() {
     }
     Serial.print("****Baseline values: eCO2: 0x"); Serial.print(eCO2_base, HEX);
     Serial.print(" & TVOC: 0x"); Serial.println(TVOC_base, HEX);
+  }
+}
+
+// Tests for data from esp8266
+bool wifiInput() {
+  bool wifiAvailable = esp01.available();
+  if (wifiAvailable >= 1) {
+    return true; 
+  }
+  else {
+    return false;  
   }
 }
 
