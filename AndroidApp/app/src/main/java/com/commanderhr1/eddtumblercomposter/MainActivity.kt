@@ -5,9 +5,7 @@ package com.commanderhr1.eddtumblercomposter
 
 //import android.bluetooth.le.ScanCallback
 
-import android.os.Looper
 import android.Manifest.permission.BLUETOOTH_CONNECT
-import android.annotation.SuppressLint
 import android.bluetooth.*
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -15,12 +13,13 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.*
+import android.net.wifi.WifiConfiguration
 import android.net.wifi.WifiManager
 import android.net.wifi.WifiNetworkSpecifier
 import android.net.wifi.WifiNetworkSuggestion
 import android.net.wifi.p2p.WifiP2pManager
 import android.os.Bundle
-import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.widget.Button
 import android.widget.Toast
@@ -29,9 +28,6 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SwitchCompat
 import androidx.core.app.ActivityCompat
-import java.io.IOException
-import java.io.InputStream
-import java.io.OutputStream
 import java.util.*
 
 // MainActivity
@@ -68,6 +64,7 @@ class MainActivity : AppCompatActivity() {
 
         // WiFi initialization
         val wifi : WifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        val wifiList = wifi.configuredNetworks
 
         // WiFi Direct
         val looper : Looper = Looper.getMainLooper()
@@ -109,14 +106,29 @@ class MainActivity : AppCompatActivity() {
 
         // TODO: Update WiFi scanning and connection code
         val networkSSID = "EDDTumblerComposter"
+        val networkPass = "1234"
         val wifiSpecifierBuilder : WifiNetworkSpecifier.Builder = WifiNetworkSpecifier.Builder()
         wifiSpecifierBuilder.setSsid(networkSSID)
-        //wifiSpecifierBuilder.setWpa2Passphrase("1234")
+        //wifiSpecifierBuilder.setWpa2Passphrase(networkPass)
         val wifiSpecifier : WifiNetworkSpecifier = wifiSpecifierBuilder.build()
+
+        // Deprecated but should work
+        val wifiConf : WifiConfiguration = WifiConfiguration()
+        wifiConf.SSID = "\"" + networkSSID + "\"";   // Please note the quotes. String should contain ssid in quotes
+        wifiConf.preSharedKey = "\""+ networkPass +"\"";
+        wifi.addNetwork(wifiConf)
+        for (i in wifiList) {
+            if (i.SSID != null && i.SSID == "\"" + networkSSID + "\"") {
+                wifi.disconnect()
+                wifi.enableNetwork(i.networkId, true)
+                wifi.reconnect()
+                break
+            }
+        }
 
         val wifiNetworkSuggestionBuilder : WifiNetworkSuggestion.Builder = WifiNetworkSuggestion.Builder()
         wifiNetworkSuggestionBuilder.setSsid(networkSSID)
-        //wifiNetworkSuggestionBuilder.setWpa2Passphrase("1234")
+        //wifiNetworkSuggestionBuilder.setWpa2Passphrase(networkPass)
         val wifiNetworkSuggestion : WifiNetworkSuggestion = wifiNetworkSuggestionBuilder.build()
 
         val networkRequestBuilder = NetworkRequest.Builder()
@@ -143,6 +155,7 @@ class MainActivity : AppCompatActivity() {
                 Log.e(LOG_TAG, "The default network changed link properties: $linkProperties")
             }
         })
+        wifi.addNetwork(wifiConf)
 
         val easyConnect = wifi.isEasyConnectSupported
         val wifiIntentFilter = IntentFilter()
@@ -154,7 +167,9 @@ class MainActivity : AppCompatActivity() {
         if (!wifiScanSuccess) {
             scanFailure(wifi)
         }
-
+        else {
+            scanSuccess(wifi)
+        }
 
 
 
@@ -276,6 +291,7 @@ class MainActivity : AppCompatActivity() {
 
     // TODO: Update Bluetooth server functionality
     // Bluetooth connection/scanning thread
+    /*
     @SuppressLint("MissingPermission")
     private inner class AcceptThread : Thread() {
         private val mmServerSocket: BluetoothServerSocket? by lazy(LazyThreadSafetyMode.NONE) {
@@ -309,8 +325,9 @@ class MainActivity : AppCompatActivity() {
                 Log.e(LOG_TAG, "Could not close the connect socket", e)
             }
         }
-    }
+    }*/
 
+    /*
     // Bluetooth service for composter
     class BluetoothService(
         // handler that gets info from Bluetooth service
@@ -381,19 +398,20 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-    }
+    }*/
 
 
     // WiFi scan successful
     private fun scanSuccess(wifiManager : WifiManager) {
         val results = wifiManager.scanResults
 
+        //... use new scan results ...
         for (result in results) {
             if (result.SSID.equals("EDDTumblerComposter")) {
                 // TODO: Implement WiFi connection
+                wifiConnectComposter(wifiManager)
             }
         }
-        //... use new scan results ...
     }
 
     // WiFi scan failed
@@ -402,6 +420,11 @@ class MainActivity : AppCompatActivity() {
         // consider using old scan results: these are the OLD results!
         val results = wifiManager.scanResults
         //... potentially use older scan results ...
+    }
+
+    // Connect to composter
+    private fun wifiConnectComposter(wifiManager: WifiManager) {
+
     }
 
     // Scans for BLE devices

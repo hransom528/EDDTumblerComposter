@@ -45,6 +45,7 @@ void setup() {
   Serial.begin(9600);
   while (!Serial) { delay(10); };
 
+  /*
   // Connect to HC-05 Bluetooth module
   Serial.println("Connecting to HC31 bluetooth module...");
   hc31.begin(HC31_CLOCK);
@@ -57,7 +58,7 @@ void setup() {
   sendCommand(0, "AT+ADDR?");
   Serial.print("Password: ");
   sendCommand(0, "AT+PSWD?");
-  // TODO: Troubleshoot Bluetooth module connection
+  // TODO: Troubleshoot Bluetooth module connection*/
 
   // Connect to ESP01 WiFi module
   Serial.println("Connecting to ESP01 WiFi module...");
@@ -65,6 +66,13 @@ void setup() {
   sendCommand(1, "AT");
   Serial.print("Version: "); 
   sendCommand(1, "AT+GMR");
+  sendCommand("AT+CWMODE=2");                 // Configure ESP8266 as an access point
+  sendCommand("AT+CIFSR");                    // Get the ip address
+  sendCommand("AT+CIPMUX=1");                 // Configure for multiple connections
+  sendCommand("AT+CIPSERVER=1,80");           // Turn on server on port 80
+  sendCommand("AT+CIPSTO=" + SERVER_TIMEOUT); // Set server timeout
+  sendCommand("AT+CWSAP?");                   // Gets final configuration of ESP8266
+  Serial.println("WiFi Module Configured Successfully"); 
   // TODO: Update WiFi module code
   
   // Connect to DS18B20 temperature sensor
