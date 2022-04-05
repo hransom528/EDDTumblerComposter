@@ -27,14 +27,14 @@ const byte MOTOR = 23;
 const byte SPEAKER = 9;
 
 /** Bluetooth Module **/
-const byte RX1 = 19;
+/*const byte RX1 = 19;
 const byte TX1 = 18;
 const int HC31_CLOCK = 38400; // Baud rate for AT commands is 38400, otherwise, use 9600 
-SoftwareSerial hc31(RX1, TX1); // RX, TX
+SoftwareSerial hc31(RX1, TX1); // RX, TX*/
 
 /** WiFi Module **/
-const byte RX2 = 17;
-const byte TX2 = 16;
+const byte RX2 = 10;
+const byte TX2 = 11;
 const int ESP01_CLOCK = 9600;
 SoftwareSerial esp01(RX2, TX2); // RX, TX
 bool wifiAvailable = false;
@@ -64,16 +64,16 @@ void setup() {
 
   
   // Connect to ESP01 WiFi module
-  Serial.println("Connecting to ESP01 WiFi module...");
+  Serial.println("\nConnecting to ESP01 WiFi module...");
   esp01.begin(ESP01_CLOCK);
-  sendCommand(1, "AT");
-  sendCommand(1, "AT+GMR");
-  sendCommand(1, "AT+CWMODE=3");                 // Configure ESP8266 as an access point
-  sendCommand(1, "AT+CIFSR");                    // Get the ip address
-  sendCommand(1, "AT+CIPMUX=1");                 // Configure for multiple connections
-  sendCommand(1, "AT+CIPSERVER=1,80");           // Turn on server on port 80
-  sendCommand(1, "AT+CIPSTO=" + SERVER_TIMEOUT); // Set server timeout
-  sendCommand(1, "AT+CWSAP?");                   // Gets final configuration of ESP8266
+  sendCommand("AT");
+  sendCommand("AT+GMR");
+  sendCommand("AT+CWMODE=3");                 // Configure ESP8266 as an access point
+  sendCommand("AT+CIFSR");                    // Get the ip address
+  sendCommand("AT+CIPMUX=1");                 // Configure for multiple connections
+  sendCommand("AT+CIPSERVER=1,80");           // Turn on server on port 80
+  sendCommand("AT+CIPSTO=" + SERVER_TIMEOUT); // Set server timeout
+  sendCommand("AT+CWSAP?");                   // Gets final configuration of ESP8266
   Serial.println("WiFi Module Configured Successfully"); 
   // TODO: Test WiFi module code
   
@@ -202,20 +202,11 @@ bool wifiInput() {
 }
 
 // Sends AT serial command to Bluetooth and WiFi modules
-void sendCommand(byte module, String command) {
+void sendCommand(String command) {
   String message = "";
-  if (module) {
-    esp01.print(command);
-    esp01.println("\r");
-    while (!esp01.available()) { delay(5); }
-    message =  esp01.readString();
-  }
-  else {
-    hc31.print(command);
-    hc31.println("\r");
-    while (!hc31.available()) { delay(5); }
-    message = hc31.readString();
-  }
+  esp01.println(command);
+  while (!esp01.available()) { delay(5); }
+  message =  esp01.readString();
   Serial.println(message);
 }
 
