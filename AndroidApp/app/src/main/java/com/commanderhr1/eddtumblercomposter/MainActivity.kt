@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.commanderhr1.eddtumblercomposter
 
 //import android.Manifest
@@ -28,6 +30,9 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SwitchCompat
 import androidx.core.app.ActivityCompat
+import java.io.*
+import java.net.InetAddress
+import java.net.Socket
 import java.util.*
 
 // MainActivity
@@ -37,7 +42,7 @@ class MainActivity : AppCompatActivity() {
 
     // Bluetooth
     private lateinit var bluetoothManager : BluetoothManager
-    lateinit var bluetoothAdapter : BluetoothAdapter
+    private lateinit var bluetoothAdapter : BluetoothAdapter
     val APP_UUID: UUID = UUID.fromString("7f27fb35-8295-4755-8596-236b479f1ff0")
 
     // onCreate
@@ -65,6 +70,8 @@ class MainActivity : AppCompatActivity() {
         // WiFi initialization
         val wifi : WifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
         val wifiList = wifi.configuredNetworks
+        val networkSSID = "EDDTumblerComposter"
+        val networkPass = "12345678"
 
         // WiFi Direct
         val looper : Looper = Looper.getMainLooper()
@@ -105,14 +112,13 @@ class MainActivity : AppCompatActivity() {
 
 
         // TODO: Update WiFi scanning and connection code
-        val networkSSID = "EDDTumblerComposter"
-        val networkPass = "1234"
+
         val wifiSpecifierBuilder : WifiNetworkSpecifier.Builder = WifiNetworkSpecifier.Builder()
         wifiSpecifierBuilder.setSsid(networkSSID)
         //wifiSpecifierBuilder.setWpa2Passphrase(networkPass)
         val wifiSpecifier : WifiNetworkSpecifier = wifiSpecifierBuilder.build()
 
-        // Deprecated but should work
+        // WifiConfiguration implementation, deprecated but should work
         val wifiConf : WifiConfiguration = WifiConfiguration()
         wifiConf.SSID = "\"" + networkSSID + "\"";   // Please note the quotes. String should contain ssid in quotes
         wifiConf.preSharedKey = "\""+ networkPass +"\"";
@@ -126,11 +132,13 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        // WifiNetworkSuggestion implementation
         val wifiNetworkSuggestionBuilder : WifiNetworkSuggestion.Builder = WifiNetworkSuggestion.Builder()
         wifiNetworkSuggestionBuilder.setSsid(networkSSID)
         //wifiNetworkSuggestionBuilder.setWpa2Passphrase(networkPass)
         val wifiNetworkSuggestion : WifiNetworkSuggestion = wifiNetworkSuggestionBuilder.build()
 
+        // NetworkRequest implementation
         val networkRequestBuilder = NetworkRequest.Builder()
         networkRequestBuilder.addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
         networkRequestBuilder.setNetworkSpecifier(wifiSpecifier)
@@ -171,7 +179,8 @@ class MainActivity : AppCompatActivity() {
             scanSuccess(wifi)
         }
 
-
+        // TCP client connection
+        var tcpClient : TcpClient
 
         // TODO: Implement permission checking inside button onClickListener methods
         // btnRequestWifiPerms
@@ -441,4 +450,114 @@ class MainActivity : AppCompatActivity() {
             bleScanner.stopScan(leScanCallback)
         }
     }*/
+
+    class TcpClient(listener: OnMessageReceived?) {
+        // message to send to the server
+        private var mServerMessage: String? = null
+
+        // sends message received notifications
+        private var mMessageListener: OnMessageReceived? = null
+
+        // while this is true, the server will continue running
+        private var mRun = false
+
+        // used to send messages
+        private var mBufferOut: PrintWriter? = null
+
+        // used to read messages from the server
+        private var mBufferIn: BufferedReader? = null
+
+        /**
+         * Sends the message entered by client to the server
+         *
+         * @param message text entered by client
+         */
+        fun sendMessage(message: String) {
+            val runnable = Runnable {
+                if (mBufferOut != null) {
+                    Log.d(TAG, "Sending: $message")
+                    mBufferOut!!.println(message)
+                    mBufferOut!!.flush()
+                }
+            }
+            val thread = Thread(runnable)
+            thread.start()
+        }
+
+        /**
+         * Close the connection and release the members
+         */
+        fun stopClient() {
+            mRun = false
+            if (mBufferOut != null) {
+                mBufferOut!!.flush()
+                mBufferOut!!.close()
+            }
+            mMessageListener = null
+            mBufferIn = null
+            mBufferOut = null
+            mServerMessage = null
+        }
+
+        fun run() {
+            mRun = true
+            try {
+                //here you must put your computer's IP address.
+                val serverAddr: InetAddress = InetAddress.getByName(SERVER_IP)
+                Log.d("TCP Client", "C: Connecting...")
+
+                //create a socket to make the connection with the server
+                val socket = Socket(serverAddr, SERVER_PORT)
+                try {
+
+                    //sends the message to the server
+                    mBufferOut = PrintWriter(
+                        BufferedWriter(OutputStreamWriter(socket.getOutputStream())),
+                        true
+                    )
+
+                    //receives the message which the server sends back
+                    mBufferIn = BufferedReader(InputStreamReader(socket.getInputStream()))
+
+
+                    //in this while the client listens for the messages sent by the server
+                    while (mRun) {
+                        mServerMessage = mBufferIn!!.readLine()
+                        if (mServerMessage != null && mMessageListener != null) {
+                            //call the method messageReceived from MyActivity class
+                            mMessageListener!!.messageReceived(mServerMessage)
+                        }
+                    }
+                    Log.d("RESPONSE FROM SERVER", "S: Received Message: '$mServerMessage'")
+                } catch (e: Exception) {
+                    Log.e("TCP", "S: Error", e)
+                } finally {
+                    //the socket must be closed. It is not possible to reconnect to this socket
+                    // after it is closed, which means a new socket instance has to be created.
+                    socket.close()
+                }
+            } catch (e: Exception) {
+                Log.e("TCP", "C: Error", e)
+            }
+        }
+
+        //Declare the interface. The method messageReceived(String message) will must be implemented in the Activity
+        //class at on AsyncTask doInBackground
+        interface OnMessageReceived {
+            fun messageReceived(message: String?)
+        }
+
+        companion object {
+            val TAG: String = TcpClient::class.java.simpleName
+            const val SERVER_IP = "192.168.1.8" //server IP address
+            const val SERVER_PORT = 1234
+        }
+
+        /**
+         * Constructor of the class. OnMessagedReceived listens for the messages received from server
+         */
+        init {
+            mMessageListener = listener
+        }
+    }
 }
