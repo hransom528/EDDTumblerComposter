@@ -45,6 +45,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var bluetoothAdapter : BluetoothAdapter
     val APP_UUID: UUID = UUID.fromString("7f27fb35-8295-4755-8596-236b479f1ff0")
 
+    // WiFi
+    private var socket : Socket? = null
+
+
     // onCreate
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -112,7 +116,6 @@ class MainActivity : AppCompatActivity() {
 
 
         // TODO: Update WiFi scanning and connection code
-
         val wifiSpecifierBuilder : WifiNetworkSpecifier.Builder = WifiNetworkSpecifier.Builder()
         wifiSpecifierBuilder.setSsid(networkSSID)
         //wifiSpecifierBuilder.setWpa2Passphrase(networkPass)
@@ -122,15 +125,10 @@ class MainActivity : AppCompatActivity() {
         val wifiConf : WifiConfiguration = WifiConfiguration()
         wifiConf.SSID = "\"" + networkSSID + "\"";   // Please note the quotes. String should contain ssid in quotes
         wifiConf.preSharedKey = "\""+ networkPass +"\"";
-        wifi.addNetwork(wifiConf)
-        for (i in wifiList) {
-            if (i.SSID != null && i.SSID == "\"" + networkSSID + "\"") {
-                wifi.disconnect()
-                wifi.enableNetwork(i.networkId, true)
-                wifi.reconnect()
-                break
-            }
-        }
+        val netID : Int = wifi.addNetwork(wifiConf)
+        wifi.disconnect()
+        wifi.enableNetwork(netID, true)
+        wifi.reconnect()
 
         // WifiNetworkSuggestion implementation
         val wifiNetworkSuggestionBuilder : WifiNetworkSuggestion.Builder = WifiNetworkSuggestion.Builder()
@@ -180,7 +178,12 @@ class MainActivity : AppCompatActivity() {
         }
 
         // TCP client connection
+        val ipAddr : String = "192.168.4.1"
+        val wifiPort : Int = 80
         var tcpClient : TcpClient
+        socket = Socket(ipAddr, wifiPort)
+        var socketInputStream : InputStream = socket!!.getInputStream()
+        var socketOutputStream : OutputStream = socket!!.getOutputStream()
 
         // TODO: Implement permission checking inside button onClickListener methods
         // btnRequestWifiPerms
@@ -234,6 +237,9 @@ class MainActivity : AppCompatActivity() {
     // onDestroy
     override fun onDestroy() {
         super.onDestroy()
+
+        // Closes TCP socket
+        socket?.close()
 
         // Don't forget to unregister the ACTION_FOUND receiver.
         unregisterReceiver(receiver)
@@ -548,7 +554,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         companion object {
-            val TAG: String = TcpClient::class.java.simpleName
+            val TAG: String? = TcpClient::class.simpleName
             const val SERVER_IP = "192.168.1.8" //server IP address
             const val SERVER_PORT = 1234
         }
