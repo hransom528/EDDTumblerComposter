@@ -16,9 +16,7 @@ import android.net.wifi.WifiConfiguration
 import android.net.wifi.WifiManager
 import android.net.wifi.WifiNetworkSpecifier
 import android.net.wifi.WifiNetworkSuggestion
-import android.net.wifi.p2p.WifiP2pManager
 import android.os.Bundle
-import android.os.Looper
 import android.util.Log
 import android.widget.Button
 import android.widget.Toast
@@ -26,9 +24,11 @@ import androidx.activity.result.contract.ActivityResultContracts.RequestPermissi
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SwitchCompat
+import androidx.appcompat.widget.Toolbar
 import androidx.core.app.ActivityCompat
 import java.io.*
 import java.net.InetAddress
+import java.net.InetSocketAddress
 import java.net.Socket
 
 // MainActivity
@@ -48,6 +48,9 @@ class MainActivity : AppCompatActivity() {
         val btnRequestWifiPerms : Button = findViewById(R.id.btnRequestWifiPerms)
         val btnWifiConnect: Button = findViewById(R.id.btnWifiConnect)
         val swtWifiOn : SwitchCompat = findViewById(R.id.swtWifiOn)
+        val toolbar : Toolbar = findViewById(R.id.toolbar)
+        setSupportActionBar(toolbar)
+        // TODO: Update toolbar
 
         // Shared preferences
         val examplePrefs = getSharedPreferences("PREFS", 0)
@@ -61,12 +64,13 @@ class MainActivity : AppCompatActivity() {
         val networkPass = "12345678"
 
         // WiFi Direct
+        /*
         val looper : Looper = Looper.getMainLooper()
         val wifiP2P : WifiP2pManager = applicationContext.getSystemService(Context.WIFI_P2P_SERVICE) as WifiP2pManager
         val p2pChannelListener : WifiP2pManager.ChannelListener = WifiP2pManager.ChannelListener {
             // TODO: Update WiFi direct with ChannelListener and BroadcastReceiver
         }
-        val wifiP2PChannel : WifiP2pManager.Channel =  wifiP2P.initialize(applicationContext, looper, p2pChannelListener)
+        val wifiP2PChannel : WifiP2pManager.Channel =  wifiP2P.initialize(applicationContext, looper, p2pChannelListener)*/
 
         // TODO: Update WiFi scanning and connection code
         val wifiSpecifierBuilder : WifiNetworkSpecifier.Builder = WifiNetworkSpecifier.Builder()
@@ -80,12 +84,14 @@ class MainActivity : AppCompatActivity() {
         wifiConf.preSharedKey = "\""+ networkPass +"\""
         val netID : Int = wifi.addNetwork(wifiConf)
 
-
         // WifiNetworkSuggestion implementation
         val wifiNetworkSuggestionBuilder : WifiNetworkSuggestion.Builder = WifiNetworkSuggestion.Builder()
         wifiNetworkSuggestionBuilder.setSsid(networkSSID)
         //wifiNetworkSuggestionBuilder.setWpa2Passphrase(networkPass)
         val wifiNetworkSuggestion : WifiNetworkSuggestion = wifiNetworkSuggestionBuilder.build()
+        val suggestionList : MutableList<WifiNetworkSuggestion> = emptyList<WifiNetworkSuggestion>() as MutableList<WifiNetworkSuggestion>
+        suggestionList.add(wifiNetworkSuggestion)
+        wifi.addNetworkSuggestions(suggestionList)
 
         // NetworkRequest implementation
         val networkRequestBuilder = NetworkRequest.Builder()
@@ -93,7 +99,7 @@ class MainActivity : AppCompatActivity() {
         networkRequestBuilder.setNetworkSpecifier(wifiSpecifier)
         val networkRequest = networkRequestBuilder.build()
         val cm : ConnectivityManager = this.getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
-        cm.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
+        cm.registerNetworkCallback(networkRequest, object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network : Network) {
                 Log.e(LOG_TAG, "The default network is now: $network")
             }
@@ -112,8 +118,9 @@ class MainActivity : AppCompatActivity() {
                 Log.e(LOG_TAG, "The default network changed link properties: $linkProperties")
             }
         })
-        wifi.addNetwork(wifiConf)
+        //cm.createSocketKeepalive()
 
+        // WiFi Scanning
         val easyConnect = wifi.isEasyConnectSupported
         val wifiIntentFilter = IntentFilter()
         wifiIntentFilter.addAction(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)
@@ -133,6 +140,7 @@ class MainActivity : AppCompatActivity() {
         val wifiPort = 80
         //var tcpClient : TcpClient
         socket = Socket(ipAddr, wifiPort)
+        val socketAddress = InetSocketAddress(wifiPort)
 
         // TODO: Implement permission checking inside button onClickListener methods
         // btnRequestWifiPerms
@@ -145,16 +153,18 @@ class MainActivity : AppCompatActivity() {
             wifi.disconnect()
             wifi.enableNetwork(netID, true)
             wifi.reconnect()
+            socket!!.connect(socketAddress)
+            //val wifiTcpThread = tcpThread(true, false, null, "tcpThread", 1, )
         }
 
         // swtWiFiOn
         swtWifiOn.setOnCheckedChangeListener { _, isChecked ->
-            wifi.isWifiEnabled = isChecked
             if (!isChecked) {
+                wifi.isWifiEnabled = false
                 wifi.disconnect()
             }
             else {
-
+                wifi.isWifiEnabled = true
             }
         }
     }
@@ -238,7 +248,9 @@ class MainActivity : AppCompatActivity() {
 
     // Connect to composter
     private fun wifiConnectComposter(wifiManager: WifiManager) {
-
+        wifiManager.disconnect()
+        //wifiManager.enableNetwork()
+        wifiManager.reconnect()
     }
 
     class TcpClient(listener: OnMessageReceived?) {
@@ -351,12 +363,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    //Declare the interface. The method messageReceived(String message) will must be implemented in the Activity
-    //class at on AsyncTask doInBackground
-    interface OnMessageReceived {
-        fun messageReceived(message: String?)
-    }
-
     // TODO: Update TCP thread
     // Thread for handling TCP I/O
     fun tcpThread(start: Boolean = true,
@@ -365,12 +371,13 @@ class MainActivity : AppCompatActivity() {
                   name: String? = null,
                   priority: Int = -1,
                   block: () -> Unit, ) {
-        var socketInputStream : InputStream = socket!!.getInputStream()
+        val socketInputStream : InputStream = socket!!.getInputStream()
         var socketOutputStream : OutputStream = socket!!.getOutputStream()
 
         // Data available on TCP socket
         if (socketInputStream.available() > 0) {
             val inputString : String = socketInputStream.read().toString()
+            Log.i(LOG_TAG, "Received TCP data: $inputString")
         }
     }
 }
