@@ -5,7 +5,7 @@ package com.commanderhr1.eddtumblercomposter
 //import android.Manifest
 //import android.app.Activity
 
-import android.Manifest.permission.ACCESS_FINE_LOCATION
+import android.Manifest.permission.*
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -28,8 +28,8 @@ import androidx.appcompat.widget.Toolbar
 import androidx.core.app.ActivityCompat
 import java.io.*
 import java.net.InetAddress
-import java.net.InetSocketAddress
 import java.net.Socket
+
 
 // MainActivity
 class MainActivity : AppCompatActivity() {
@@ -38,6 +38,14 @@ class MainActivity : AppCompatActivity() {
 
     // WiFi
     private var socket : Socket? = null
+    private var wifi : WifiManager? = null
+    private var wifiConf : WifiConfiguration = WifiConfiguration()
+    private val networkSSID = "Meir1"
+    private val networkPass = "Harran!404"
+    private lateinit var networkInfo : NetworkInfo
+    private var cm : ConnectivityManager? = null
+    private var wifiList : MutableList<WifiConfiguration>? = null
+    private lateinit var networkRequest : NetworkRequest
 
     // onCreate
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -49,7 +57,7 @@ class MainActivity : AppCompatActivity() {
         val btnWifiConnect: Button = findViewById(R.id.btnWifiConnect)
         val swtWifiOn : SwitchCompat = findViewById(R.id.swtWifiOn)
         val toolbar : Toolbar = findViewById(R.id.toolbar)
-        setSupportActionBar(toolbar)
+        //setSupportActionBar(toolbar)
         // TODO: Update toolbar
 
         // Shared preferences
@@ -58,10 +66,8 @@ class MainActivity : AppCompatActivity() {
 
         // WiFi initialization
         checkWifiPermission(ACCESS_FINE_LOCATION)
-        val wifi : WifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-        val wifiList = wifi.configuredNetworks
-        val networkSSID = "EDDTumblerComposter"
-        val networkPass = "12345678"
+        wifi = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        wifiList = wifi!!.configuredNetworks
 
         // WiFi Direct
         /*
@@ -72,112 +78,118 @@ class MainActivity : AppCompatActivity() {
         }
         val wifiP2PChannel : WifiP2pManager.Channel =  wifiP2P.initialize(applicationContext, looper, p2pChannelListener)*/
 
-        // TODO: Update WiFi scanning and connection code
-        val wifiSpecifierBuilder : WifiNetworkSpecifier.Builder = WifiNetworkSpecifier.Builder()
-        wifiSpecifierBuilder.setSsid(networkSSID)
-        //wifiSpecifierBuilder.setWpa2Passphrase(networkPass)
-        val wifiSpecifier : WifiNetworkSpecifier = wifiSpecifierBuilder.build()
-
+        // TODO: Update WiFi connection code
         // WifiConfiguration implementation, deprecated but should work
-        val wifiConf = WifiConfiguration()
+        wifiConf = WifiConfiguration()
+        wifiConf.priority = 10
         wifiConf.SSID = "\"" + networkSSID + "\""   // Please note the quotes. String should contain ssid in quotes
         wifiConf.preSharedKey = "\""+ networkPass +"\""
-        val netID : Int = wifi.addNetwork(wifiConf)
-
-        // WifiNetworkSuggestion implementation
-        val wifiNetworkSuggestionBuilder : WifiNetworkSuggestion.Builder = WifiNetworkSuggestion.Builder()
-        wifiNetworkSuggestionBuilder.setSsid(networkSSID)
-        //wifiNetworkSuggestionBuilder.setWpa2Passphrase(networkPass)
-        val wifiNetworkSuggestion : WifiNetworkSuggestion = wifiNetworkSuggestionBuilder.build()
-        val suggestionList : MutableList<WifiNetworkSuggestion> = emptyList<WifiNetworkSuggestion>() as MutableList<WifiNetworkSuggestion>
-        suggestionList.add(wifiNetworkSuggestion)
-        wifi.addNetworkSuggestions(suggestionList)
+        val netID : Int = wifi!!.addNetwork(wifiConf)
 
         // NetworkRequest implementation
+        val wifiSpecifierBuilder : WifiNetworkSpecifier.Builder = WifiNetworkSpecifier.Builder().setSsid(networkSSID)
+        wifiSpecifierBuilder.setWpa2Passphrase(networkPass)
+        val wifiSpecifier : WifiNetworkSpecifier = wifiSpecifierBuilder.build()
         val networkRequestBuilder = NetworkRequest.Builder()
         networkRequestBuilder.addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+        networkRequestBuilder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
+        networkRequestBuilder.addCapability(NetworkCapabilities.NET_CAPABILITY_TRUSTED)
+        networkRequestBuilder.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
         networkRequestBuilder.setNetworkSpecifier(wifiSpecifier)
-        val networkRequest = networkRequestBuilder.build()
-        val cm : ConnectivityManager = this.getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
-        cm.registerNetworkCallback(networkRequest, object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network : Network) {
-                Log.e(LOG_TAG, "The default network is now: $network")
-            }
-
-            override fun onLost(network : Network) {
-                Log.e(LOG_TAG,
-                    "The application no longer has a default network. The last default network was $network"
-                )
-            }
-
-            override fun onCapabilitiesChanged(network : Network, networkCapabilities : NetworkCapabilities) {
-                Log.e(LOG_TAG, "The default network changed capabilities: $networkCapabilities")
-            }
-
-            override fun onLinkPropertiesChanged(network : Network, linkProperties : LinkProperties) {
-                Log.e(LOG_TAG, "The default network changed link properties: $linkProperties")
-            }
-        })
-        //cm.createSocketKeepalive()
+        networkRequest = networkRequestBuilder.build()
+        cm = this.getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
 
         // WiFi Scanning
-        val easyConnect = wifi.isEasyConnectSupported
         val wifiIntentFilter = IntentFilter()
         wifiIntentFilter.addAction(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)
         applicationContext.registerReceiver(wifiScanReceiver, wifiIntentFilter)
-
-        // Starts WiFi scanning
-        val wifiScanSuccess : Boolean = wifi.startScan()
-        if (!wifiScanSuccess) {
-            scanFailure(wifi)
-        }
-        else {
-            scanSuccess(wifi)
-        }
 
         // TCP client connection
         val ipAddr = "192.168.4.1"
         val wifiPort = 80
         //var tcpClient : TcpClient
-        socket = Socket(ipAddr, wifiPort)
-        val socketAddress = InetSocketAddress(wifiPort)
 
-        // TODO: Implement permission checking inside button onClickListener methods
         // btnRequestWifiPerms
         btnRequestWifiPerms.setOnClickListener {
+            checkWifiPermission(ACCESS_FINE_LOCATION)
+            checkWifiPermission(ACCESS_COARSE_LOCATION)
+            //checkWifiPermission(CHANGE_NETWORK_STATE)
+            //checkWifiPermission(WRITE_SETTINGS)
+            // WifiNetworkSuggestion implementation
+            val wifiNetworkSuggestionBuilder : WifiNetworkSuggestion.Builder = WifiNetworkSuggestion.Builder()
+            wifiNetworkSuggestionBuilder.setSsid(networkSSID)
+            wifiNetworkSuggestionBuilder.setIsHiddenSsid(wifiConf.hiddenSSID)
+            wifiNetworkSuggestionBuilder.setWpa2Passphrase(networkPass)
+            wifiNetworkSuggestionBuilder.setPriority(999)
 
+            val wifiNetworkSuggestion : WifiNetworkSuggestion = wifiNetworkSuggestionBuilder.build()
+            val suggestionList : MutableList<WifiNetworkSuggestion> = ArrayList()
+            suggestionList.add(wifiNetworkSuggestion)
+            val suggestionStatus : Int = wifi!!.addNetworkSuggestions(suggestionList)
         }
 
         // btnConnect
         btnWifiConnect.setOnClickListener {
-            wifi.disconnect()
-            wifi.enableNetwork(netID, true)
-            wifi.reconnect()
-            socket!!.connect(socketAddress)
-            //val wifiTcpThread = tcpThread(true, false, null, "tcpThread", 1, )
+            // Starts WiFi scanning
+            val wifiScanSuccess : Boolean = wifi!!.startScan()
+            if (!wifiScanSuccess) {
+                scanFailure()
+            }
+
+            // TODO: Implement WiFi connection in separate thread
+
+            val isConnected = wifiConnectComposter(networkRequest)
+            /*
+            if (isConnected) {
+                socket = Socket(ipAddr, wifiPort)
+                val socketAddress = InetSocketAddress(wifiPort)
+                socket!!.connect(socketAddress)
+                //val wifiTcpThread = tcpThread(true, false, null, "tcpThread", 1, )
+            }*/
         }
 
         // swtWiFiOn
         swtWifiOn.setOnCheckedChangeListener { _, isChecked ->
             if (!isChecked) {
-                wifi.isWifiEnabled = false
-                wifi.disconnect()
+                wifi!!.isWifiEnabled = false
+                wifi!!.disconnect()
             }
             else {
-                wifi.isWifiEnabled = true
+                wifi!!.isWifiEnabled = true
             }
         }
+    }
+
+    // onStart
+    override fun onStart() {
+        super.onStart()
+
+        // Gets configured WiFi networks
+        checkWifiPermission(ACCESS_COARSE_LOCATION)
+        checkWifiPermission(ACCESS_FINE_LOCATION)
+        wifiList = wifi!!.configuredNetworks
+
     }
 
     // onDestroy
     override fun onDestroy() {
         super.onDestroy()
 
+        // Disconnects WiFi
+        wifi?.disconnect()
+
         // Closes TCP socket
         socket?.close()
 
         // Don't forget to unregister the ACTION_FOUND receiver.
         unregisterReceiver(wifiScanReceiver)
+    }
+
+    // onResume
+    override fun onResume() {
+        super.onResume()
+        checkWifiPermission(ACCESS_FINE_LOCATION)
+        val isConnected : Boolean = isConnected(applicationContext, ConnectivityManager.TYPE_WIFI)
     }
 
     // Checks for BLUETOOTH_CONNECT permission
@@ -208,49 +220,75 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // Checks if network is connected
+    private fun isConnected(context: Context, networkType: Int): Boolean {
+        if (cm != null) {
+            networkInfo = cm!!.getNetworkInfo(networkType)!!
+        }
+        val isConnected = networkInfo.isConnected
+        Log.i(LOG_TAG, "Network Connected: $isConnected")
+        return isConnected
+    }
 
     // Creates a BroadcastReceiver for WiFi scan.
     private val wifiScanReceiver = object : BroadcastReceiver() {
-        val wifi : WifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
         override fun onReceive(context: Context, intent: Intent) {
             val success = intent.getBooleanExtra(WifiManager.EXTRA_RESULTS_UPDATED, false)
             if (success) {
-                scanSuccess(wifi)
+                scanSuccess()
             } else {
-                scanFailure(wifi)
+                scanFailure()
             }
         }
     }
 
     // WiFi scan successful
-    private fun scanSuccess(wifiManager : WifiManager) {
-        val results = wifiManager.scanResults
+    private fun scanSuccess() {
+        val results = wifi?.scanResults
 
+        Toast.makeText(applicationContext, "WiFi Networks Successfully Scanned", Toast.LENGTH_SHORT).show()
         Log.i(LOG_TAG, "WiFi Networks Successfully Scanned")
 
+
         //... use new scan results ...
-        for (result in results) {
-            if (result.SSID.equals("EDDTumblerComposter")) {
-                Log.i(LOG_TAG, "EDDTumblerComposter Detected")
-                // TODO: Implement WiFi connection
-                wifiConnectComposter(wifiManager)
+        Log.i(LOG_TAG, "Networks: ")
+        for (result in results!!) {
+            Log.i(LOG_TAG, "\t$result")
+            if (result.SSID.equals(networkSSID)) {
+                Log.i(LOG_TAG, "$networkSSID Detected")
+                wifiConnectComposter(networkRequest)
             }
         }
     }
 
     // WiFi scan failed
-    private fun scanFailure(wifiManager : WifiManager) {
+    private fun scanFailure() {
         // handle failure: new scan did NOT succeed
         // consider using old scan results: these are the OLD results!
-        val results = wifiManager.scanResults
+        val results = wifi?.scanResults
+
+        Toast.makeText(applicationContext, "WiFi Network Scan Unsuccessful", Toast.LENGTH_SHORT).show()
+        Log.e(LOG_TAG, "WiFi Network Scan Unsuccessful")
         //... potentially use older scan results ...
     }
 
     // Connect to composter
-    private fun wifiConnectComposter(wifiManager: WifiManager) {
-        wifiManager.disconnect()
-        //wifiManager.enableNetwork()
-        wifiManager.reconnect()
+    private fun wifiConnectComposter(networkRequest : NetworkRequest): Boolean {
+        /*wifi?.disconnect()
+        val netID = wifi?.addNetwork(wifiConf)
+        wifi?.enableNetwork(netID!!, true)
+        wifi?.reconnect()*/
+        cm?.requestNetwork(networkRequest, object : ConnectivityManager.NetworkCallback() {
+            @Override
+            override fun onAvailable(network: Network) {
+                //Use this network object to Send request.
+                //eg - Using OkHttp library to create a service request
+                super.onAvailable(network)
+
+                //cm!!.bindProcessToNetwork()
+            }
+        })
+        return isConnected(applicationContext, ConnectivityManager.TYPE_WIFI)
     }
 
     class TcpClient(listener: OnMessageReceived?) {
@@ -365,12 +403,14 @@ class MainActivity : AppCompatActivity() {
 
     // TODO: Update TCP thread
     // Thread for handling TCP I/O
-    fun tcpThread(start: Boolean = true,
-                  isDaemon: Boolean = false,
-                  contextClassLoader: ClassLoader? = null,
-                  name: String? = null,
-                  priority: Int = -1,
-                  block: () -> Unit, ) {
+    fun tcpThread(
+        start: Boolean = true,
+        isDaemon: Boolean = false,
+        contextClassLoader: ClassLoader? = null,
+        name: String? = null,
+        priority: Int = -1,
+        block: () -> Unit,
+    ) {
         val socketInputStream : InputStream = socket!!.getInputStream()
         var socketOutputStream : OutputStream = socket!!.getOutputStream()
 

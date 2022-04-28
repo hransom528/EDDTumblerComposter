@@ -18,6 +18,7 @@
         android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE"/>
+    <uses-feature android:name="android.hardware.vulkan.version"/>
 
     <application
     android:icon="@mipmap/ic_launcher"
