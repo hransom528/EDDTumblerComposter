@@ -1,5 +1,3 @@
-@file:Suppress("DEPRECATION")
-
 package com.commanderhr1.eddtumblercomposter
 
 //import android.Manifest
@@ -12,7 +10,6 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.*
-import android.net.wifi.WifiConfiguration
 import android.net.wifi.WifiManager
 import android.net.wifi.WifiNetworkSpecifier
 import android.net.wifi.WifiNetworkSuggestion
@@ -28,6 +25,7 @@ import androidx.appcompat.widget.Toolbar
 import androidx.core.app.ActivityCompat
 import java.io.*
 import java.net.InetAddress
+import java.net.InetSocketAddress
 import java.net.Socket
 
 
@@ -39,12 +37,10 @@ class MainActivity : AppCompatActivity() {
     // WiFi
     private var socket : Socket? = null
     private var wifi : WifiManager? = null
-    private var wifiConf : WifiConfiguration = WifiConfiguration()
     private val networkSSID = "Meir1"
     private val networkPass = "Harran!404"
-    private lateinit var networkInfo : NetworkInfo
+    //private lateinit var networkInfo : NetworkInfo
     private var cm : ConnectivityManager? = null
-    private var wifiList : MutableList<WifiConfiguration>? = null
     private lateinit var networkRequest : NetworkRequest
 
     // onCreate
@@ -57,35 +53,14 @@ class MainActivity : AppCompatActivity() {
         val btnWifiConnect: Button = findViewById(R.id.btnWifiConnect)
         val swtWifiOn : SwitchCompat = findViewById(R.id.swtWifiOn)
         val toolbar : Toolbar = findViewById(R.id.toolbar)
-        //setSupportActionBar(toolbar)
+        setSupportActionBar(toolbar)
         // TODO: Update toolbar
-
-        // Shared preferences
-        val examplePrefs = getSharedPreferences("PREFS", 0)
-        val editor = examplePrefs.edit()
 
         // WiFi initialization
         checkWifiPermission(ACCESS_FINE_LOCATION)
         wifi = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-        wifiList = wifi!!.configuredNetworks
-
-        // WiFi Direct
-        /*
-        val looper : Looper = Looper.getMainLooper()
-        val wifiP2P : WifiP2pManager = applicationContext.getSystemService(Context.WIFI_P2P_SERVICE) as WifiP2pManager
-        val p2pChannelListener : WifiP2pManager.ChannelListener = WifiP2pManager.ChannelListener {
-            // TODO: Update WiFi direct with ChannelListener and BroadcastReceiver
-        }
-        val wifiP2PChannel : WifiP2pManager.Channel =  wifiP2P.initialize(applicationContext, looper, p2pChannelListener)*/
 
         // TODO: Update WiFi connection code
-        // WifiConfiguration implementation, deprecated but should work
-        wifiConf = WifiConfiguration()
-        wifiConf.priority = 10
-        wifiConf.SSID = "\"" + networkSSID + "\""   // Please note the quotes. String should contain ssid in quotes
-        wifiConf.preSharedKey = "\""+ networkPass +"\""
-        val netID : Int = wifi!!.addNetwork(wifiConf)
-
         // NetworkRequest implementation
         val wifiSpecifierBuilder : WifiNetworkSpecifier.Builder = WifiNetworkSpecifier.Builder().setSsid(networkSSID)
         wifiSpecifierBuilder.setWpa2Passphrase(networkPass)
@@ -118,7 +93,7 @@ class MainActivity : AppCompatActivity() {
             // WifiNetworkSuggestion implementation
             val wifiNetworkSuggestionBuilder : WifiNetworkSuggestion.Builder = WifiNetworkSuggestion.Builder()
             wifiNetworkSuggestionBuilder.setSsid(networkSSID)
-            wifiNetworkSuggestionBuilder.setIsHiddenSsid(wifiConf.hiddenSSID)
+            //wifiNetworkSuggestionBuilder.setIsHiddenSsid(wifiConf.hiddenSSID)
             wifiNetworkSuggestionBuilder.setWpa2Passphrase(networkPass)
             wifiNetworkSuggestionBuilder.setPriority(999)
 
@@ -126,6 +101,9 @@ class MainActivity : AppCompatActivity() {
             val suggestionList : MutableList<WifiNetworkSuggestion> = ArrayList()
             suggestionList.add(wifiNetworkSuggestion)
             val suggestionStatus : Int = wifi!!.addNetworkSuggestions(suggestionList)
+            if (suggestionStatus ) {
+
+            }
         }
 
         // btnConnect
@@ -137,15 +115,13 @@ class MainActivity : AppCompatActivity() {
             }
 
             // TODO: Implement WiFi connection in separate thread
-
             val isConnected = wifiConnectComposter(networkRequest)
-            /*
             if (isConnected) {
                 socket = Socket(ipAddr, wifiPort)
                 val socketAddress = InetSocketAddress(wifiPort)
                 socket!!.connect(socketAddress)
                 //val wifiTcpThread = tcpThread(true, false, null, "tcpThread", 1, )
-            }*/
+            }
         }
 
         // swtWiFiOn
@@ -167,8 +143,6 @@ class MainActivity : AppCompatActivity() {
         // Gets configured WiFi networks
         checkWifiPermission(ACCESS_COARSE_LOCATION)
         checkWifiPermission(ACCESS_FINE_LOCATION)
-        wifiList = wifi!!.configuredNetworks
-
     }
 
     // onDestroy
@@ -176,7 +150,7 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
 
         // Disconnects WiFi
-        wifi?.disconnect()
+        cm?.unregisterNetworkCallback(wifiNetworkCallback)
 
         // Closes TCP socket
         socket?.close()
@@ -222,12 +196,13 @@ class MainActivity : AppCompatActivity() {
 
     // Checks if network is connected
     private fun isConnected(context: Context, networkType: Int): Boolean {
-        if (cm != null) {
-            networkInfo = cm!!.getNetworkInfo(networkType)!!
+        val nw : Network? = cm!!.activeNetwork ?: return false
+        val nwCapabilities = cm!!.getNetworkCapabilities(nw) ?: return false
+        return when {
+            nwCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> true
+            else -> false
         }
-        val isConnected = networkInfo.isConnected
         Log.i(LOG_TAG, "Network Connected: $isConnected")
-        return isConnected
     }
 
     // Creates a BroadcastReceiver for WiFi scan.
@@ -272,25 +247,28 @@ class MainActivity : AppCompatActivity() {
         //... potentially use older scan results ...
     }
 
+    // ConnectivityManager network callback for WiFi connection
+    // TODO: Update wifiNetworkCallback
+    private val wifiNetworkCallback = object : ConnectivityManager.NetworkCallback()  {
+        override fun onAvailable(network : Network) {
+            super.onAvailable(network)
+            Log.i(LOG_TAG, "WifiNetworkCallback onAvailable")
+        }
+
+        override fun onLost(network: Network) {
+            super.onLost(network)
+            Log.i(LOG_TAG, "WifiNetworkCallback onLost")
+        }
+    }
+
     // Connect to composter
     private fun wifiConnectComposter(networkRequest : NetworkRequest): Boolean {
-        /*wifi?.disconnect()
-        val netID = wifi?.addNetwork(wifiConf)
-        wifi?.enableNetwork(netID!!, true)
-        wifi?.reconnect()*/
-        cm?.requestNetwork(networkRequest, object : ConnectivityManager.NetworkCallback() {
-            @Override
-            override fun onAvailable(network: Network) {
-                //Use this network object to Send request.
-                //eg - Using OkHttp library to create a service request
-                super.onAvailable(network)
-
-                //cm!!.bindProcessToNetwork()
-            }
-        })
+        cm?.registerNetworkCallback(networkRequest, wifiNetworkCallback)
+        cm?.requestNetwork(networkRequest, wifiNetworkCallback)
         return isConnected(applicationContext, ConnectivityManager.TYPE_WIFI)
     }
 
+    /*
     class TcpClient(listener: OnMessageReceived?) {
         // message to send to the server
         private var mServerMessage: String? = null
@@ -419,5 +397,5 @@ class MainActivity : AppCompatActivity() {
             val inputString : String = socketInputStream.read().toString()
             Log.i(LOG_TAG, "Received TCP data: $inputString")
         }
-    }
+    }*/
 }

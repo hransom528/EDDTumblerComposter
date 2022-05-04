@@ -6,8 +6,9 @@
 #include <Adafruit_SGP30.h>
 #include <DallasTemperature.h>
 #include <LiquidCrystal_I2C.h>
-#include <OneWire.h>
-#include <SoftwareSerial.h>
+#include <OneWire.h> 
+#include <AltSoftSerial.h>
+#include <SoftwareSerial.h> // TODO: Update with AltSoftSerial or HardwareSerial
 #include <Wire.h>
 
 /** LCD Initialization **/
@@ -30,7 +31,8 @@ const byte SPEAKER = 9;
 const byte RX1 = 10;
 const byte TX1 = 11;
 const int ESP01_CLOCK = 9600;
-SoftwareSerial esp01(RX1, TX1); // RX, TX
+AltSoftSerial esp01(RX1, TX1);
+//SoftwareSerial esp01(RX1, TX1); // RX, TX
 bool wifiAvailable = false;
 const String SERVER_TIMEOUT = "900";
 bool phoneConnected = false;
@@ -60,7 +62,6 @@ void setup() {
   sendCommand("AT+CIPSTO=" + SERVER_TIMEOUT); // Set server timeout
   sendCommand("AT+CWSAP?");                   // Gets final configuration of ESP8266
   Serial.println("WiFi Module Configured Successfully"); 
-  // TODO: Test WiFi module code
   
   // Connect to DS18B20 temperature sensor
   tempSensor.begin();
@@ -99,6 +100,9 @@ void loop() {
     Serial.println(inputString);
     if (inputString.equals("0,CONNECT")) {
       phoneConnected = true;
+    }
+    else if (inputString.equals("0, CLOSED")) {
+      phoneConnected = false;
     }
   }
   
@@ -177,8 +181,8 @@ void loop() {
     }
   }
   
-  // Loop delay == 5s
-  delay(20);
+  // Small loop delay
+  delay(10);
 
   // SGP30 periodic calibration
   counter++;
