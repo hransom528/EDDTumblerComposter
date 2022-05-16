@@ -1,4 +1,4 @@
-// EDD Tumbler Composter Arduino Code
+ // EDD Tumbler Composter Arduino Code
 // Kalash, Harris, Connor
 
 /** Includes **/
@@ -31,7 +31,7 @@ const byte SPEAKER = 9;
 const byte RX1 = 10;
 const byte TX1 = 11;
 const int ESP01_CLOCK = 9600;
-AltSoftSerial esp01(RX1, TX1);
+SoftwareSerial esp01(RX1, TX1);
 //SoftwareSerial esp01(RX1, TX1); // RX, TX
 bool wifiAvailable = false;
 const String SERVER_TIMEOUT = "900";
