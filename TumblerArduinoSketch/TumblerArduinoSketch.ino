@@ -24,8 +24,9 @@ Adafruit_SGP30 sgp;
 int counter = 0;
 
 /** Output devices **/
-const byte MOTOR = 23;
-const byte SPEAKER = 9;
+const byte MOTOR = 5;
+//const byte SPEAKER = 9;
+bool motorOn = false;
 
 /** WiFi Module **/
 const byte RX1 = 10;
@@ -50,6 +51,7 @@ void setup() {
   Serial.print("Connected to serial monitor");
   
   // Connect to ESP01 WiFi module
+  /*
   Serial.println("\nConnecting to ESP01 WiFi module...");
   esp01.begin(ESP01_CLOCK);
   sendCommand("AT");
@@ -62,6 +64,7 @@ void setup() {
   sendCommand("AT+CIPSTO=" + SERVER_TIMEOUT); // Set server timeout
   sendCommand("AT+CWSAP?");                   // Gets final configuration of ESP8266
   Serial.println("WiFi Module Configured Successfully"); 
+  */
   
   // Connect to DS18B20 temperature sensor
   tempSensor.begin();
@@ -86,6 +89,9 @@ void setup() {
     Serial.println("DHT20 not found");
     while (1) delay(10);
   } 
+
+  // Motor
+  pinMode(MOTOR, OUTPUT);
 }
 
 // Loop
@@ -115,7 +121,6 @@ void loop() {
 
   // Sets SGP30 absolute humidity to enable humidity compensation for air quality readings
   sgp.setHumidity(getAbsoluteHumidity(dhtTemp, dhtHumidity));
-
   
   // SGP30 reading and output
   Serial.println("SGP30 Data: ");
@@ -180,6 +185,20 @@ void loop() {
         break;
     }
   }
+
+  // Analog Ramp-Up/Ramp-Down
+  Serial.println("Ramping up");
+  motorOn = true;
+  for (int i=0; i<256; i++) {
+    analogWrite(MOTOR, i);
+    delay(10);
+  }
+  Serial.println("Ramping down");
+  for (int i=255; i >= 0; i--) {
+    analogWrite(MOTOR, i);
+    delay(10);
+  }
+  motorOn = false;
   
   // Small loop delay
   delay(10);
