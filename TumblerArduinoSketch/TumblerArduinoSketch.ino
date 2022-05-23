@@ -47,11 +47,11 @@ byte lcdCycle = 0;
 void setup() {
   // Serial console
   Serial.begin(9600);
-  while (!Serial) { delay(10); };
-  Serial.print("Connected to serial monitor");
+  //while (!Serial) { delay(10); };
+  Serial.print("\nConnected to serial monitor");
   
   // Connect to ESP01 WiFi module
-  /*
+  
   Serial.println("\nConnecting to ESP01 WiFi module...");
   esp01.begin(ESP01_CLOCK);
   sendCommand("AT");
@@ -64,7 +64,7 @@ void setup() {
   sendCommand("AT+CIPSTO=" + SERVER_TIMEOUT); // Set server timeout
   sendCommand("AT+CWSAP?");                   // Gets final configuration of ESP8266
   Serial.println("WiFi Module Configured Successfully"); 
-  */
+  
   
   // Connect to DS18B20 temperature sensor
   tempSensor.begin();
