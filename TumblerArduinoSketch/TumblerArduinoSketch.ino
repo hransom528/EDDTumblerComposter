@@ -8,7 +8,9 @@
 #include <LiquidCrystal_I2C.h>
 #include <OneWire.h> 
 #include <AltSoftSerial.h>
+#include <SD.h>
 #include <SoftwareSerial.h> // TODO: Update with AltSoftSerial or HardwareSerial
+#include <SPI.h>            // SPI protocol for microSD Card adapter
 #include <Wire.h>
 
 /** LCD Initialization **/
@@ -42,6 +44,11 @@ bool phoneConnected = false;
 long lcdInterval = 5000;
 long lcdPreviousMillis = 0;
 byte lcdCycle = 0;
+long logInterval = 5000;
+long logPreviousMillis = 0;
+
+/** SD Card **/
+File logFile;
 
 // Setup
 void setup() {
@@ -51,7 +58,6 @@ void setup() {
   Serial.print("\nConnected to serial monitor");
   
   // Connect to ESP01 WiFi module
-  
   Serial.println("\nConnecting to ESP01 WiFi module...");
   esp01.begin(ESP01_CLOCK);
   sendCommand("AT");
@@ -64,7 +70,6 @@ void setup() {
   sendCommand("AT+CIPSTO=" + SERVER_TIMEOUT); // Set server timeout
   sendCommand("AT+CWSAP?");                   // Gets final configuration of ESP8266
   Serial.println("WiFi Module Configured Successfully"); 
-  
   
   // Connect to DS18B20 temperature sensor
   tempSensor.begin();
@@ -92,6 +97,13 @@ void setup() {
 
   // Motor
   pinMode(MOTOR, OUTPUT);
+
+  // SD card module initialization
+  Serial.println("Initializing SD card...");
+  if (!SD.begin(10)) {
+    Serial.println("SD Card Initialization Failed!");
+    while(1) delay(10);
+  }
 }
 
 // Loop
@@ -186,8 +198,34 @@ void loop() {
     }
   }
 
+  // TODO: Log sensor readings to SD card CSV file
+  if(delayMillis(currentMillis, &logPreviousMillis, logInterval)) {
+    //logData();
+    logFile = SD.open("log.csv", FILE_WRITE);
+    if (logFile) {
+      logFile.print(millis());
+      logFile.print(",");
+      logFile.print(tempSensor.getTempCByIndex(0));
+      logFile.print(",");
+      logFile.print(tempSensor.getTempFByIndex(0));
+      logFile.print(",");
+      logFile.print(dhtTemp);
+      logFile.print(",");
+      logFile.print(dhtHumidity);
+      logFile.print(",");
+      logFile.print(sgp.TVOC);
+      logFile.print(",");
+      logFile.print(sgp.eCO2);
+      logFile.print(",");
+      logFile.print(sgp.rawH2);
+      logFile.print(",");
+      logFile.println(sgp.rawEthanol);
+    }
+    logFile.close();
+  }
+
   // Analog Ramp-Up/Ramp-Down
-  Serial.println("Ramping up");
+  /*Serial.println("Ramping up");
   motorOn = true;
   for (int i=0; i<256; i++) {
     analogWrite(MOTOR, i);
@@ -198,7 +236,7 @@ void loop() {
     analogWrite(MOTOR, i);
     delay(10);
   }
-  motorOn = false;
+  motorOn = false; */
   
   // Small loop delay
   delay(10);
@@ -236,6 +274,10 @@ void sendCommand(String command) {
   while (!esp01.available()) { delay(5); }
   message =  esp01.readString();
   Serial.println(message);
+}
+
+bool logData() {
+  
 }
 
 
