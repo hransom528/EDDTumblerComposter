@@ -44,11 +44,12 @@ bool phoneConnected = false;
 long lcdInterval = 5000;
 long lcdPreviousMillis = 0;
 byte lcdCycle = 0;
-long logInterval = 5000;
+long logInterval = 30000;
 long logPreviousMillis = 0;
 
 /** SD Card **/
 File logFile;
+const short chipSelect = 53;
 
 // Setup
 void setup() {
@@ -82,7 +83,7 @@ void setup() {
   // Connect to SGP30 air quality sensor
   if (! sgp.begin()){
     Serial.println("SGP30 not found");
-    while (1);
+    while (1) delay(10);
   }
   Serial.print("Found SGP30 serial #");
   Serial.print(sgp.serialnumber[0], HEX);
@@ -100,7 +101,7 @@ void setup() {
 
   // SD card module initialization
   Serial.println("Initializing SD card...");
-  if (!SD.begin(10)) {
+  if (!SD.begin(chipSelect)) {
     Serial.println("SD Card Initialization Failed!");
     while(1) delay(10);
   }
@@ -225,7 +226,7 @@ void loop() {
   }
 
   // Analog Ramp-Up/Ramp-Down
-  /*Serial.println("Ramping up");
+  Serial.println("Ramping up");
   motorOn = true;
   for (int i=0; i<256; i++) {
     analogWrite(MOTOR, i);
@@ -236,7 +237,7 @@ void loop() {
     analogWrite(MOTOR, i);
     delay(10);
   }
-  motorOn = false; */
+  motorOn = false;
   
   // Small loop delay
   delay(10);

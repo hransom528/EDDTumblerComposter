@@ -14,12 +14,12 @@ void setup() {
 // Loop
 void loop() {
   // Digital On/Off
-  digitalWrite(MOTOR, HIGH);
+  /*digitalWrite(MOTOR, HIGH);
   Serial.println("Motor ON");
   delay(DELAY_TIME);
   digitalWrite(MOTOR, LOW);
   Serial.println("Motor OFF");
-  delay(DELAY_TIME);
+  delay(DELAY_TIME);*/
 
   // Analog Ramp-Up/Ramp-Down
   Serial.println("Ramping up");
